@@ -1,0 +1,122 @@
+# ====================
+# Node.js
+# ====================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ====================
+# Build / Dist
+# ====================
+dist/
+build/
+out/
+.vercel/
+.netlify/
+
+# ====================
+# Ambiente e configurações
+# ====================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# ====================
+# IDE e editores
+# ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ====================
+# Logs
+# ====================
+logs/
+*.log
+log.txt
+
+# ====================
+# Arquivos de sistema
+# ====================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ====================
+# Arquivos temporários
+# ====================
+*.tmp
+*.temp
+.cache/
+temp/
+
+# ====================
+# Testes
+# ====================
+coverage/
+.nyc_output/
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+
+# ====================
+# Banco de dados (local)
+# ====================
+*.sqlite
+*.db
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# ====================
+# Backup
+# ====================
+*.bak
+*.backup
+*.old
+*.orig
+
+# ====================
+# Docker (opcional)
+# ====================
+docker-compose.override.yml
+.dockerignore
+
+# ====================
+# Arquivos de pacote específicos
+# ====================
+# npm
+.npm/
+# yarn
+.yarn/
+.yarnrc
+.yarnclean
+# pnpm
+.pnpm-store/
+
+# ====================
+# Arquivos de tipos (TypeScript)
+# ====================
+*.tsbuildinfo
+
+# ====================
+# Arquivos específicos do projeto
+# ====================
+# (adicione outros específicos se necessário)
+# Exemplo: .env.local, .env.test, etc.

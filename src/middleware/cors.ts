@@ -3,9 +3,8 @@ import cors from 'cors';
 
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://habilitefacil.com.br',
-  'https://sistemaprovasdetran.netlify.app',
-  'https://courageous-pasca-3ba56d.netlify.app',
+  'https://gestor-blog-construbet.netlify.app',
+  
 ];
 
 export const corsMiddleware = cors({

@@ -1,36 +1,52 @@
 import { BlogPostRepository } from '../repositories/BlogPostRepository';
 import { AppError, ConflictError, NotFoundError } from '../errors/AppError';
-import { CreateBlogPostDTO } from '../dtos/CreateBlogPostDTO';
-import { UpdateBlogPostDTO } from '../dtos/UpdateBlogPostDTO';
-import { BlogPost, ListBlogPostsParams } from '../types/blogPost.types';
+import { supabase } from '../../../config/supabase';
+// ✅ USAR OS TIPOS CORRETOS
+import { BlogPost, ListBlogPostsParams, CreatePostDTO, UpdatePostDTO } from '../types/blogPost.types';
 
-// Converte "Meu Post de Teste!" -> "meu-post-de-teste"
 function generateSlug(text: string): string {
   const normalized = text
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-') // troca qualquer não alfanumérico por hífen
-    .replace(/^-+|-+$/g, '') // remove hífens nas pontas
-    .replace(/-{2,}/g, '-'); // evita hífens duplicados
-
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
   return normalized || 'post';
 }
 
 export class BlogPostService {
   private repository = new BlogPostRepository();
 
-  async create(data: CreateBlogPostDTO): Promise<BlogPost> {
-    // 1) Slug: usa o informado ou gera a partir do título
+  /**
+   * ✅ AUTO-ENRIQUECIMENTO: Busca o nome da categoria se apenas categoria_id foi fornecido
+   */
+  private async enrichCategoryName(data: CreatePostDTO | UpdatePostDTO): Promise<void> {
+    if (data.categoria_id && !data.category) {
+      const { data: categoria, error } = await supabase
+        .from('blog_categoria')
+        .select('nome')
+        .eq('id', data.categoria_id)
+        .single();
+
+      if (!error && categoria) {
+        data.category = categoria.nome; // Preenche o campo com o nome legível
+      }
+    }
+  }
+
+  // ✅ USAR CreatePostDTO
+  async create(data: CreatePostDTO): Promise<BlogPost> {
+    // ✅ AUTO-PREENCHER CATEGORIA SE NECESSÁRIO
+    await this.enrichCategoryName(data);
+
     const slug = data.slug?.trim() ? data.slug.trim() : generateSlug(data.title);
 
-    // 2) Verifica unicidade do slug
     const slugInUse = await this.repository.slugExists(slug);
     if (slugInUse) {
       throw new ConflictError(`Já existe um post com o slug "${slug}"`);
     }
 
-    // 3) Insere o post (UUID será gerado automaticamente pelo banco)
     return this.repository.create({ ...data, slug });
   }
 
@@ -50,7 +66,6 @@ export class BlogPostService {
     return post;
   }
 
-  // ✅ Aceita UUID (string)
   async findById(id: string): Promise<BlogPost> {
     const post = await this.repository.findById(id);
     if (!post) {
@@ -59,12 +74,13 @@ export class BlogPostService {
     return post;
   }
 
-  // ✅ Aceita UUID (string)
-  async update(id: string, data: UpdateBlogPostDTO): Promise<BlogPost> {
-    // 1) Confirma que o post existe
+  // ✅ USAR UpdatePostDTO
+  async update(id: string, data: UpdatePostDTO): Promise<BlogPost> {
     await this.findById(id);
 
-    // 2) Se slug for alterado, garante unicidade (excluindo o próprio post)
+    // ✅ AUTO-PREENCHER CATEGORIA SE NECESSÁRIO
+    await this.enrichCategoryName(data);
+
     if (data.slug) {
       const slugInUse = await this.repository.slugExists(data.slug.trim(), id);
       if (slugInUse) {
@@ -73,7 +89,6 @@ export class BlogPostService {
       data.slug = data.slug.trim();
     }
 
-    // 3) Atualiza no banco
     const updated = await this.repository.update(id, data);
     if (!updated) {
       throw new NotFoundError(`Post com id "${id}" não encontrado`);
@@ -81,7 +96,6 @@ export class BlogPostService {
     return updated;
   }
 
-  // ✅ Aceita UUID (string)
   async delete(id: string): Promise<void> {
     await this.findById(id);
     await this.repository.delete(id);

@@ -1,57 +1,73 @@
-// ✅ CORRIGIDO: Tipos consistentes com UUID
-
 export type PostType = 'article' | 'video' | 'news';
 
-// Categoria do blog (relação com blog_categorias)
 export interface BlogCategoria {
-  id: string;  // UUID
+  id: string;
   nome: string;
   descricao?: string | null;
 }
 
-// Formato resumido exposto na API (id e nome)
 export interface BlogCategoriaResumida {
-  id: string | null;  // UUID ou null
+  id: string | null;
   nome: string;
 }
 
-// ✅ BlogPost principal (UUID como string)
 export interface BlogPost {
-  id: string;          // ✅ UUID (string)
-  slug: string;
-  title: string;
-  description: string;
-  content: string;
-  image: string;
-  category: string;
-  categoria_id: string;  // UUID
+  id: string;
+  slug: string | null;
+  title: string | null;
+  description: string | null;
+  content: string | null;
+  
+  // ✅ CAMPOS DE IMAGEM CORRETOS
+  image_url: string | null;
+  image_path: string | null;
+  image_filename: string | null;
+  image_size: number | null;
+  image_mime_type: string | null;
+  storage_bucket: string | null;
+  
+  category: string | null;
+  categoria_id: string | null;
   reading_time: string;
   type: string;
   featured: boolean;
-  video1: string;
-  video2: string;
-  author: string;
-  author_image: string;
-  tags: string[];
+  video1: string | null;
+  video2: string | null;
+  author: string | null;
+  author_image: string | null;
+  tags: any;
+  
+  // ✅ STATUS
+  status: boolean;
+  
   created_at: string;
   updated_at: string;
   published_at: string | null;
 }
 
-// ✅ Linha exatamente como armazenada no Supabase (snake_case)
 export interface BlogPostRow {
-  id: string;          // ✅ UUID (string) - CORRIGIDO
-  slug: string;
-  title: string;
-  description: string;
-  image: string;
-  category: string;
-  categoria_id: string | null;  // ✅ UUID (string) ou null
-  reading_time: string;
+  id: string;
+  slug: string | null;
+  title: string | null;
+  description: string | null;
   content: string | null;
+  
+  // ✅ CAMPOS DE IMAGEM CORRETOS
+  image_url: string | null;
+  image_path: string | null;
+  image_filename: string | null;
+  image_size: number | null;
+  image_mime_type: string | null;
+  storage_bucket: string | null;
+  
+  category: string | null;
+  categoria_id: string | null;
+  reading_time: string;
+
   type: PostType | null;
   tags: string[] | null;
   featured: boolean | null;
+  status: boolean | null;  // ✅ status (não ativo)
   video1: string | null;
   video2: string | null;
   author: string | null;
@@ -61,11 +77,56 @@ export interface BlogPostRow {
   published_at: string | null;
 }
 
-// Parâmetros para listar posts
 export interface ListBlogPostsParams {
   page: number;
   limit: number;
   category?: string;
   tag?: string;
   featured?: boolean;
+  status?: boolean;  // ✅ status (não ativo)
+}
+
+// ✅ DTOs PARA CREATE/UPDATE
+export interface CreatePostDTO {
+  slug?: string;
+  title: string;
+  content: string;
+  description?: string | null;
+  category?: string | null;
+  categoria_id?: string | null;
+  reading_time?: string;
+  type?: string;
+  featured?: boolean;
+  author?: string | null;
+  author_image?: string | null;
+  tags?: any;
+  image_url?: string | null;
+  image_path?: string | null;
+  image_filename?: string | null;
+  image_size?: number | null;
+  image_mime_type?: string | null;
+  storage_bucket?: string | null;
+  status?: boolean;
+}
+
+export interface UpdatePostDTO {
+  slug?: string;
+  title?: string;
+  content?: string;
+  description?: string | null;
+  category?: string | null;
+  categoria_id?: string | null;
+  reading_time?: string;
+  type?: string;
+  featured?: boolean;
+  author?: string | null;
+  author_image?: string | null;
+  tags?: any;
+  image_url?: string | null;
+  image_path?: string | null;
+  image_filename?: string | null;
+  image_size?: number | null;
+  image_mime_type?: string | null;
+  storage_bucket?: string | null;
+  status?: boolean;
 }

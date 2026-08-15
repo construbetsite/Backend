@@ -1,25 +1,22 @@
-# TODO - Módulo de Provas e Simulados (Back-end)
+# TODO - Otimizações do Módulo do Blog
 
-- [ ] Criar SQL `SQL_provas_simulados.sql` com tabelas: provas, questoes, tentativas, respostas + índices + triggers + RLS + tabela `administradores`.
-- [ ] Criar middleware `isAdmin` consultando `public.administradores` com `req.user.id`.
-- [ ] Implementar routes/controller/service de Admin (CRUD):
-  - [ ] POST /api/provas
-  - [ ] GET /api/provas/:id
-  - [ ] PUT /api/provas/:id
-  - [ ] DELETE /api/provas/:id
-  - [ ] POST /api/provas/:id/questoes
-  - [ ] PUT /api/questoes/:id
-  - [ ] DELETE /api/questoes/:id
-- [ ] Implementar routes/controller/service de Clientes:
-  - [ ] GET /api/provas/disponiveis (listar ativas + status/progresso do usuário)
-  - [ ] POST /api/tentativas (iniciar tentativa)
-  - [ ] GET /api/tentativas/:id (detalhar tentativa + respostas salvas)
-  - [ ] PUT /api/tentativas/:id (salvar resposta(s))
-  - [ ] POST /api/tentativas/:id/finalizar (calcular pontuação + porcentagem)
-  - [ ] GET /api/tentativas (histórico resumido)
-  - [ ] GET /api/tentativas/:id/resultado (resultado detalhado acertos/erros)
-- [ ] Integrar rotas no `src/index.ts`.
+## Upload de imagens
+- [ ] Criar bucket no Supabase Storage (`blog-images`, público para leitura).
+- [ ] Implementar `POST /api/blog/posts/upload` com `multer` (memória, 5MB, JPEG/PNG/WEBP).
+- [ ] Enviar arquivo para o Storage e retornar `{ success: true, url }`.
+- [ ] Restringir rota a admins autenticados (`authMiddleware` + `isAdminMiddleware`).
+- [ ] Tratar erros: `{ success: false, message }` com HTTP 400/413/500 conforme o caso.
+
+## Campo `status` nos posts
+- [ ] Adicionar coluna `status` (`rascunho` | `publicado` | `arquivado`) na tabela `blog_posts`.
+- [ ] Atualizar `BlogPostRow`/`BlogPost` em `types/blogPost.types.ts`.
+- [ ] Validar valor via Joi (`createBlogPostSchema` e `updateBlogPostSchema`).
+- [ ] Mapear para a coluna snake_case no `BlogPostRepository` (default `rascunho`).
+- [ ] Permitir filtro `?status=` no `list`.
 - [ ] Garantir consistência de erros: `{ success: false, message }` com códigos HTTP.
+
+## Integração e validação
+- [ ] Integrar rotas no `src/index.ts`.
 - [ ] Rodar `npm run build`.
-- [ ] Testar endpoints via Postman (cenários admin + cliente).
+- [ ] Testar endpoints via Postman.
 

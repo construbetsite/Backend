@@ -6,6 +6,7 @@ import usuariosRoutes from "./routes/usuarios.routes";
 
 import blogPostRoutes from "./modules/blog/routes/blogPost.routes";
 import blogCategoriaRoutes from "./modules/blog/routes/blogCategoria.routes";
+import blogUploadRoutes from "./modules/blog/routes/blogUpload.routes";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/usuarios", usuariosRoutes);
 
 app.use("/api/blog/posts", blogPostRoutes);
+app.use("/api/blog/upload", blogUploadRoutes); // ✅ CORRIGIDO: /upload em vez de /posts/upload
 app.use("/api/blog/categorias", blogCategoriaRoutes);
 
 

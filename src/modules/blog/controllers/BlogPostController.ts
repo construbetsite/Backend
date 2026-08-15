@@ -51,9 +51,35 @@ export class BlogPostController {
   // POST /api/blog/posts
   create = async (req: Request, res: Response) => {
     try {
+      // ✅ LOG DO BODY ORIGINAL
+      console.log('📥 [Controller CREATE] Body original:', req.body);
+      
       // ✅ Converter dados para snake_case antes de enviar ao service
       const data = toSnakeCase(req.body);
+      
+      // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM)
+      console.log('📥 [Controller CREATE] Dados convertidos:', {
+        title: data.title,
+        status: data.status,
+        image_url: data.image_url,
+        image_path: data.image_path,
+        image_filename: data.image_filename,
+        image_size: data.image_size,
+        image_mime_type: data.image_mime_type,
+        storage_bucket: data.storage_bucket,
+      });
+      
       const post = await this.service.create(data);
+      
+      // ✅ LOG DO POST CRIADO
+      console.log('✅ [Controller CREATE] Post criado:', {
+        id: post.id,
+        title: post.title,
+        image_url: post.image_url,
+        image_path: post.image_path,
+        status: post.status,
+      });
+      
       return res.status(201).json({ success: true, data: post });
     } catch (error) {
       console.error('[BlogPostController.create]', error);
@@ -64,7 +90,7 @@ export class BlogPostController {
     }
   };
 
-  // GET /api/blog/posts?page=&limit=&category=&tag=&featured=
+  // GET /api/blog/posts?page=&limit=&category=&tag=&featured=&status=
   list = async (req: Request, res: Response) => {
     try {
       const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
@@ -81,6 +107,14 @@ export class BlogPostController {
           : req.query.featured === 'false'
             ? false
             : undefined;
+      
+      // ✅ USAR STATUS (NÃO ATIVO)
+      const status =
+        req.query.status === 'true'
+          ? true
+          : req.query.status === 'false'
+            ? false
+            : undefined;
 
       const { items, total } = await this.service.list({
         page,
@@ -88,6 +122,7 @@ export class BlogPostController {
         category,
         tag,
         featured,
+        status, // ← status (não ativo)
       });
 
       const totalPages = Math.ceil(total / limit);
@@ -149,6 +184,16 @@ export class BlogPostController {
       
       console.log(`🔍 Buscando post por ID: ${id}`);
       const post = await this.service.findById(id);
+      
+      // ✅ LOG DO POST ENCONTRADO
+      console.log('✅ [Controller findById] Post encontrado:', {
+        id: post.id,
+        title: post.title,
+        image_url: post.image_url,
+        image_path: post.image_path,
+        status: post.status,
+      });
+      
       return res.status(200).json({ success: true, data: post });
     } catch (error) {
       console.error('[BlogPostController.findById]', error);
@@ -173,14 +218,39 @@ export class BlogPostController {
       
       console.log(`📝 Atualizando post ID: ${id}`);
       
+      // ✅ LOG DO BODY ORIGINAL
+      console.log('📥 [Controller UPDATE] Body original:', req.body);
+      
       // ✅ Converter dados para snake_case antes de enviar ao service
       const data = toSnakeCase(req.body);
+      
+      // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM)
+      console.log('📥 [Controller UPDATE] Dados convertidos:', {
+        title: data.title,
+        status: data.status,
+        image_url: data.image_url,
+        image_path: data.image_path,
+        image_filename: data.image_filename,
+        image_size: data.image_size,
+        image_mime_type: data.image_mime_type,
+        storage_bucket: data.storage_bucket,
+      });
       
       // 🔥 Remover campos que não devem ser atualizados
       delete data.id;
       delete data.created_at;
       
       const post = await this.service.update(id, data);
+      
+      // ✅ LOG DO POST ATUALIZADO
+      console.log('✅ [Controller UPDATE] Post atualizado:', {
+        id: post.id,
+        title: post.title,
+        image_url: post.image_url,
+        image_path: post.image_path,
+        status: post.status,
+      });
+      
       return res.status(200).json({ success: true, data: post });
     } catch (error) {
       console.error('[BlogPostController.update]', error);

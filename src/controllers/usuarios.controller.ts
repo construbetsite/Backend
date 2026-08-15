@@ -5,6 +5,7 @@ export class UsuariosController {
   private service = new UsuariosService();
 
   
+  
   criar = async (req: Request, res: Response): Promise<Response> => {
     try {
       const { email, senha, nome } = req.body;

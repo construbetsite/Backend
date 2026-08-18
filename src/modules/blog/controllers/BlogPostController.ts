@@ -57,10 +57,12 @@ export class BlogPostController {
       // ✅ Converter dados para snake_case antes de enviar ao service
       const data = toSnakeCase(req.body);
       
-      // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM)
+      // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM E VÍDEO)
       console.log('📥 [Controller CREATE] Dados convertidos:', {
         title: data.title,
         status: data.status,
+        video1: data.video1,      // ✅ ADICIONADO
+        video2: data.video2,      // ✅ ADICIONADO
         image_url: data.image_url,
         image_path: data.image_path,
         image_filename: data.image_filename,
@@ -75,6 +77,8 @@ export class BlogPostController {
       console.log('✅ [Controller CREATE] Post criado:', {
         id: post.id,
         title: post.title,
+        video1: post.video1,     // ✅ ADICIONADO
+        video2: post.video2,     // ✅ ADICIONADO
         image_url: post.image_url,
         image_path: post.image_path,
         status: post.status,
@@ -189,6 +193,8 @@ export class BlogPostController {
       console.log('✅ [Controller findById] Post encontrado:', {
         id: post.id,
         title: post.title,
+        video1: post.video1,     // ✅ ADICIONADO
+        video2: post.video2,     // ✅ ADICIONADO
         image_url: post.image_url,
         image_path: post.image_path,
         status: post.status,
@@ -224,10 +230,12 @@ export class BlogPostController {
       // ✅ Converter dados para snake_case antes de enviar ao service
       const data = toSnakeCase(req.body);
       
-      // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM)
+      // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM E VÍDEO)
       console.log('📥 [Controller UPDATE] Dados convertidos:', {
         title: data.title,
         status: data.status,
+        video1: data.video1,      // ✅ ADICIONADO
+        video2: data.video2,      // ✅ ADICIONADO
         image_url: data.image_url,
         image_path: data.image_path,
         image_filename: data.image_filename,
@@ -246,6 +254,8 @@ export class BlogPostController {
       console.log('✅ [Controller UPDATE] Post atualizado:', {
         id: post.id,
         title: post.title,
+        video1: post.video1,     // ✅ ADICIONADO
+        video2: post.video2,     // ✅ ADICIONADO
         image_url: post.image_url,
         image_path: post.image_path,
         status: post.status,

@@ -119,6 +119,9 @@ export class BlogPostRepository {
         image_mime_type: data.image_mime_type || null,
         storage_bucket: data.storage_bucket || null,
 
+        video1: data.video1 || null,
+        video2: data.video2 || null,
+
         // ✅ STATUS (boolean)
         status: data.status ?? true,
 
@@ -154,6 +157,8 @@ export class BlogPostRepository {
     if (data.author !== undefined) updateData.author = data.author;
     if (data.author_image !== undefined) updateData.author_image = data.author_image;
     if (data.tags !== undefined) updateData.tags = data.tags;
+    if(data.video1 !== undefined) updateData.video1 = data.video1;
+    if(data.video2 !== undefined) updateData.video2 = data.video2;
 
     // ✅ CAMPOS DE IMAGEM
     if (data.image_url !== undefined) updateData.image_url = data.image_url;

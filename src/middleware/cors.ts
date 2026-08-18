@@ -9,6 +9,7 @@ const allowedOrigins = [
 ];
 
 
+
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);

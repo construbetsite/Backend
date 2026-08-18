@@ -4,6 +4,7 @@ import cors from 'cors';
 const allowedOrigins = [
   'http://localhost:5173',
   'https://gestor-blog-construbet.netlify.app',
+  'https://construbet-ofertas.netlify.app/blog',
   
 ];
 

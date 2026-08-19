@@ -17,6 +17,7 @@ app.use(corsMiddleware);
 app.use(express.json());
 
 
+
 app.get("/health", (_req, res) => {
   res.json({ success: true, message: "API funcionando" });
 });

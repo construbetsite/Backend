@@ -3,7 +3,8 @@ import { env } from "./config/env";
 import { corsMiddleware } from "./middleware/cors";
 import authRoutes from "./routes/auth.routes";
 import usuariosRoutes from "./routes/usuarios.routes";
-
+import productUploadRoutes
+  from './modules/product/routes/productUploadRoutes';
 import blogPostRoutes from "./modules/blog/routes/blogPost.routes";
 import blogCategoriaRoutes from "./modules/blog/routes/blogCategoria.routes";
 import blogUploadRoutes from "./modules/blog/routes/blogUpload.routes";
@@ -22,11 +23,12 @@ app.get("/health", (_req, res) => {
   res.json({ success: true, message: "API funcionando" });
 });
 app.use('/api/product', productRoutes);
-
 app.use(
   '/api/product-categories',
   productCategoryRoutes
 );
+app.use
+("/api/product/upload", productUploadRoutes); // ✅ CORRIGIDO: /upload em vez de /posts/upload
 
 // Rotas públicas
 app.use("/api/auth", authRoutes);

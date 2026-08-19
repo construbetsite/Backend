@@ -7,6 +7,8 @@ import usuariosRoutes from "./routes/usuarios.routes";
 import blogPostRoutes from "./modules/blog/routes/blogPost.routes";
 import blogCategoriaRoutes from "./modules/blog/routes/blogCategoria.routes";
 import blogUploadRoutes from "./modules/blog/routes/blogUpload.routes";
+import productRoutes from "../src/modules/product/routes/productRoutes"
+import productCategoryRoutes from "../src/modules/product/routes/productCategoryRoutes"
 
 const app = express();
 
@@ -18,6 +20,12 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
   res.json({ success: true, message: "API funcionando" });
 });
+app.use('/api/product', productRoutes);
+
+app.use(
+  '/api/product-categories',
+  productCategoryRoutes
+);
 
 // Rotas públicas
 app.use("/api/auth", authRoutes);

@@ -1,6 +1,13 @@
 import { Request, Response } from 'express';
 import { BlogPostService } from '../services/BlogPostService';
 import { AppError } from '../errors/AppError';
+import {
+  getCache,
+  setCache,
+  generateKey,
+  invalidatePrefix,
+  TTL_BLOG_POSTS,
+} from '../../../lib/cache';
 
 // ✅ Validador de UUID
 function isValidUUID(id: string): boolean {
@@ -11,7 +18,7 @@ function isValidUUID(id: string): boolean {
 // ✅ Função para converter camelCase para snake_case
 function toSnakeCase(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj;
-  
+
   const result: any = {};
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -53,10 +60,10 @@ export class BlogPostController {
     try {
       // ✅ LOG DO BODY ORIGINAL
       console.log('📥 [Controller CREATE] Body original:', req.body);
-      
+
       // ✅ Converter dados para snake_case antes de enviar ao service
       const data = toSnakeCase(req.body);
-      
+
       // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM E VÍDEO)
       console.log('📥 [Controller CREATE] Dados convertidos:', {
         title: data.title,
@@ -70,9 +77,13 @@ export class BlogPostController {
         image_mime_type: data.image_mime_type,
         storage_bucket: data.storage_bucket,
       });
-      
+
       const post = await this.service.create(data);
-      
+
+      // ✅ Invalidação do cache de posts do blog
+      invalidatePrefix('blog_posts:');
+      invalidatePrefix('route:/api/blog');
+
       // ✅ LOG DO POST CRIADO
       console.log('✅ [Controller CREATE] Post criado:', {
         id: post.id,
@@ -83,7 +94,7 @@ export class BlogPostController {
         image_path: post.image_path,
         status: post.status,
       });
-      
+
       return res.status(201).json({ success: true, data: post });
     } catch (error) {
       console.error('[BlogPostController.create]', error);
@@ -111,7 +122,7 @@ export class BlogPostController {
           : req.query.featured === 'false'
             ? false
             : undefined;
-      
+
       // ✅ USAR STATUS (NÃO ATIVO)
       const status =
         req.query.status === 'true'
@@ -119,6 +130,20 @@ export class BlogPostController {
           : req.query.status === 'false'
             ? false
             : undefined;
+
+      const cacheKey = generateKey('blog_posts:list', {
+        page,
+        limit,
+        category,
+        tag,
+        featured,
+        status,
+      });
+
+      const cached = getCache<any>(cacheKey);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
 
       const { items, total } = await this.service.list({
         page,
@@ -131,7 +156,7 @@ export class BlogPostController {
 
       const totalPages = Math.ceil(total / limit);
 
-      return res.status(200).json({
+      const responsePayload = {
         success: true,
         data: items,
         pagination: {
@@ -140,7 +165,11 @@ export class BlogPostController {
           total,
           totalPages,
         },
-      });
+      };
+
+      setCache(cacheKey, responsePayload, TTL_BLOG_POSTS);
+
+      return res.status(200).json(responsePayload);
     } catch (error) {
       console.error('[BlogPostController.list]', error);
       return res.status(this.errorStatus(error)).json({
@@ -154,7 +183,7 @@ export class BlogPostController {
   findBySlug = async (req: Request, res: Response) => {
     try {
       const slug = extractSlug(req.params);
-      
+
       if (!slug || slug.trim() === '') {
         return res.status(400).json({
           success: false,
@@ -162,9 +191,18 @@ export class BlogPostController {
         });
       }
 
+      const cacheKey = generateKey('blog_posts:slug', { slug });
+      const cached = getCache<any>(cacheKey);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
+
       console.log(`🔍 Buscando post por slug: ${slug}`);
       const post = await this.service.findBySlug(slug);
-      return res.status(200).json({ success: true, data: post });
+      const responsePayload = { success: true, data: post };
+      setCache(cacheKey, responsePayload, TTL_BLOG_POSTS);
+
+      return res.status(200).json(responsePayload);
     } catch (error) {
       console.error('[BlogPostController.findBySlug]', error);
       return res.status(this.errorStatus(error)).json({
@@ -178,17 +216,17 @@ export class BlogPostController {
   findById = async (req: Request, res: Response) => {
     try {
       const id = extractId(req.params);
-      
+
       if (!isValidUUID(id)) {
         return res.status(400).json({
           success: false,
           message: 'ID inválido: deve ser um UUID válido',
         });
       }
-      
+
       console.log(`🔍 Buscando post por ID: ${id}`);
       const post = await this.service.findById(id);
-      
+
       // ✅ LOG DO POST ENCONTRADO
       console.log('✅ [Controller findById] Post encontrado:', {
         id: post.id,
@@ -199,7 +237,7 @@ export class BlogPostController {
         image_path: post.image_path,
         status: post.status,
       });
-      
+
       return res.status(200).json({ success: true, data: post });
     } catch (error) {
       console.error('[BlogPostController.findById]', error);
@@ -214,22 +252,22 @@ export class BlogPostController {
   update = async (req: Request, res: Response) => {
     try {
       const id = extractId(req.params);
-      
+
       if (!isValidUUID(id)) {
         return res.status(400).json({
           success: false,
           message: 'ID inválido: deve ser um UUID válido',
         });
       }
-      
+
       console.log(`📝 Atualizando post ID: ${id}`);
-      
+
       // ✅ LOG DO BODY ORIGINAL
       console.log('📥 [Controller UPDATE] Body original:', req.body);
-      
+
       // ✅ Converter dados para snake_case antes de enviar ao service
       const data = toSnakeCase(req.body);
-      
+
       // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM E VÍDEO)
       console.log('📥 [Controller UPDATE] Dados convertidos:', {
         title: data.title,
@@ -243,13 +281,17 @@ export class BlogPostController {
         image_mime_type: data.image_mime_type,
         storage_bucket: data.storage_bucket,
       });
-      
+
       // 🔥 Remover campos que não devem ser atualizados
       delete data.id;
       delete data.created_at;
-      
+
       const post = await this.service.update(id, data);
-      
+
+      // ✅ Invalidação do cache de posts do blog
+      invalidatePrefix('blog_posts:');
+      invalidatePrefix('route:/api/blog');
+
       // ✅ LOG DO POST ATUALIZADO
       console.log('✅ [Controller UPDATE] Post atualizado:', {
         id: post.id,
@@ -260,7 +302,7 @@ export class BlogPostController {
         image_path: post.image_path,
         status: post.status,
       });
-      
+
       return res.status(200).json({ success: true, data: post });
     } catch (error) {
       console.error('[BlogPostController.update]', error);
@@ -275,16 +317,21 @@ export class BlogPostController {
   remove = async (req: Request, res: Response) => {
     try {
       const id = extractId(req.params);
-      
+
       if (!isValidUUID(id)) {
         return res.status(400).json({
           success: false,
           message: 'ID inválido: deve ser um UUID válido',
         });
       }
-      
+
       console.log(`🗑️ Excluindo post ID: ${id}`);
       await this.service.delete(id);
+
+      // ✅ Invalidação do cache de posts do blog
+      invalidatePrefix('blog_posts:');
+      invalidatePrefix('route:/api/blog');
+
       return res.status(204).send();
     } catch (error) {
       console.error('[BlogPostController.remove]', error);

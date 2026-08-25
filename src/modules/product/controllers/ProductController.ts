@@ -3,6 +3,14 @@
 import { Request, Response } from 'express';
 import { ProductService } from '../services/ProductService';
 import { CommercialType } from '../types/Product';
+import {
+  getCache,
+  setCache,
+  generateKey,
+  invalidatePrefix,
+  TTL_PRODUCTS,
+  TTL_PRODUCT_DETAIL,
+} from '../../../lib/cache';
 
 export class ProductController {
   constructor(
@@ -20,6 +28,19 @@ export class ProductController {
         active,
         featured,
       } = req.query;
+
+      const cacheKey = generateKey('products:list', {
+        categoryId,
+        commercialType,
+        active,
+        featured,
+      });
+
+      const cached = getCache<any[]>(cacheKey);
+      if (cached) {
+        res.status(200).json(cached);
+        return;
+      }
 
       const products =
         await this.service.findAll({
@@ -39,6 +60,7 @@ export class ProductController {
               : undefined,
         });
 
+      setCache(cacheKey, products, TTL_PRODUCTS);
       res.status(200).json(products);
     } catch (error: any) {
       res.status(500).json({
@@ -52,9 +74,19 @@ export class ProductController {
     res: Response
   ): Promise<void> => {
     try {
-      const product =
-        await this.service.findById(req.params.id as string);
+      const id = req.params.id as string;
+      const cacheKey = generateKey('products:id', { id });
 
+      const cached = getCache<any>(cacheKey);
+      if (cached) {
+        res.status(200).json(cached);
+        return;
+      }
+
+      const product =
+        await this.service.findById(id);
+
+      setCache(cacheKey, product, TTL_PRODUCT_DETAIL);
       res.status(200).json(product);
     } catch (error: any) {
       res.status(404).json({
@@ -68,9 +100,19 @@ export class ProductController {
     res: Response
   ): Promise<void> => {
     try {
-      const product =
-        await this.service.findBySlug(req.params.slug as string);
+      const slug = req.params.slug as string;
+      const cacheKey = generateKey('products:slug', { slug });
 
+      const cached = getCache<any>(cacheKey);
+      if (cached) {
+        res.status(200).json(cached);
+        return;
+      }
+
+      const product =
+        await this.service.findBySlug(slug);
+
+      setCache(cacheKey, product, TTL_PRODUCT_DETAIL);
       res.status(200).json(product);
     } catch (error: any) {
       res.status(404).json({
@@ -86,6 +128,9 @@ export class ProductController {
     try {
       const product =
         await this.service.create(req.body);
+
+      invalidatePrefix('products:');
+      invalidatePrefix('route:/api/product');
 
       res.status(201).json(product);
     } catch (error: any) {
@@ -106,6 +151,9 @@ export class ProductController {
           req.body
         );
 
+      invalidatePrefix('products:');
+      invalidatePrefix('route:/api/product');
+
       res.status(200).json(product);
     } catch (error: any) {
       res.status(400).json({
@@ -120,6 +168,9 @@ export class ProductController {
   ): Promise<void> => {
     try {
       await this.service.delete(req.params.id as string);
+
+      invalidatePrefix('products:');
+      invalidatePrefix('route:/api/product');
 
       res.status(204).send();
     } catch (error: any) {

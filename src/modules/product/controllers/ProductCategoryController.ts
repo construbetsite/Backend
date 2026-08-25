@@ -2,6 +2,13 @@
 
 import { Request, Response } from 'express';
 import { ProductCategoryService } from '../services/ProductCategoryService';
+import {
+  getCache,
+  setCache,
+  generateKey,
+  invalidatePrefix,
+  TTL_CATEGORIES,
+} from '../../../lib/cache';
 
 export class ProductCategoryController {
   constructor(
@@ -14,6 +21,17 @@ export class ProductCategoryController {
   ): Promise<void> => {
     try {
       const { active, parentId } = req.query;
+
+      const cacheKey = generateKey('product_categories:list', {
+        active,
+        parentId,
+      });
+
+      const cached = getCache<any[]>(cacheKey);
+      if (cached) {
+        res.status(200).json(cached);
+        return;
+      }
 
       const categories =
         await this.service.findAll({
@@ -30,6 +48,7 @@ export class ProductCategoryController {
               : String(parentId),
         });
 
+      setCache(cacheKey, categories, TTL_CATEGORIES);
       res.status(200).json(categories);
     } catch (error: any) {
       res.status(500).json({
@@ -43,9 +62,19 @@ export class ProductCategoryController {
     res: Response
   ): Promise<void> => {
     try {
-      const category =
-        await this.service.findById(req.params.id as string );
+      const id = req.params.id as string;
+      const cacheKey = generateKey('product_categories:id', { id });
 
+      const cached = getCache<any>(cacheKey);
+      if (cached) {
+        res.status(200).json(cached);
+        return;
+      }
+
+      const category =
+        await this.service.findById(id);
+
+      setCache(cacheKey, category, TTL_CATEGORIES);
       res.status(200).json(category);
     } catch (error: any) {
       res.status(404).json({
@@ -59,11 +88,19 @@ export class ProductCategoryController {
     res: Response
   ): Promise<void> => {
     try {
-      const category =
-        await this.service.findBySlug(
-          req.params.slug as string
-        );
+      const slug = req.params.slug as string;
+      const cacheKey = generateKey('product_categories:slug', { slug });
 
+      const cached = getCache<any>(cacheKey);
+      if (cached) {
+        res.status(200).json(cached);
+        return;
+      }
+
+      const category =
+        await this.service.findBySlug(slug);
+
+      setCache(cacheKey, category, TTL_CATEGORIES);
       res.status(200).json(category);
     } catch (error: any) {
       res.status(404).json({
@@ -79,6 +116,10 @@ export class ProductCategoryController {
     try {
       const category =
         await this.service.create(req.body);
+
+      invalidatePrefix('product_categories:');
+      invalidatePrefix('products:');
+      invalidatePrefix('route:/api/product-categories');
 
       res.status(201).json(category);
     } catch (error: any) {
@@ -99,6 +140,10 @@ export class ProductCategoryController {
           req.body
         );
 
+      invalidatePrefix('product_categories:');
+      invalidatePrefix('products:');
+      invalidatePrefix('route:/api/product-categories');
+
       res.status(200).json(category);
     } catch (error: any) {
       res.status(400).json({
@@ -113,6 +158,10 @@ export class ProductCategoryController {
   ): Promise<void> => {
     try {
       await this.service.delete(req.params.id as string);
+
+      invalidatePrefix('product_categories:');
+      invalidatePrefix('products:');
+      invalidatePrefix('route:/api/product-categories');
 
       res.status(204).send();
     } catch (error: any) {

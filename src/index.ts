@@ -1,4 +1,5 @@
 import express from "express";
+import compression from "compression";
 import { env } from "./config/env";
 import { corsMiddleware } from "./middleware/cors";
 import authRoutes from "./routes/auth.routes";
@@ -15,6 +16,7 @@ const app = express();
 
 
 app.use(corsMiddleware);
+app.use(compression({ threshold: 1024, level: 6 })); // ✅ Compressão Gzip (payloads > 1KB)
 app.use(express.json());
 
 

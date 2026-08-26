@@ -61,7 +61,35 @@ export class BlogPostRepository {
 
     let query = supabase
       .from('blog_posts')
-      .select('*', { count: 'exact' })
+      // ✅ Projeção explícita: evita trazer colunas desnecessárias.
+      // O mapRowToPost continua montando o contrato completo (payload inalterado).
+      .select(`
+        id,
+        slug,
+        title,
+        description,
+        content,
+        category,
+        categoria_id,
+        reading_time,
+        type,
+        featured,
+        status,
+        image_url,
+        image_path,
+        image_filename,
+        image_size,
+        image_mime_type,
+        storage_bucket,
+        video1,
+        video2,
+        author,
+        author_image,
+        tags,
+        created_at,
+        updated_at,
+        published_at
+      `, { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (category) {

@@ -46,14 +46,18 @@ export function flushCache(): void {
 
 // Utilitário para gerar chaves determinísticas
 export function generateKey(prefix: string, params?: any): string {
-  if (!params || (typeof params === 'object' && Object.keys(params).length === 0)) {
+  // ✅ Trata apenas null/undefined como ausentes (preserva false, 0 e "")
+  if (params === undefined || params === null) {
+    return prefix;
+  }
+  if (typeof params === 'object' && Object.keys(params).length === 0) {
     return prefix;
   }
   if (typeof params === 'object' && !Array.isArray(params)) {
     const sortedKeys = Object.keys(params).sort();
     const cleanParams: Record<string, any> = {};
     for (const k of sortedKeys) {
-      if (params[k] !== undefined) {
+      if (params[k] !== undefined && params[k] !== null) {
         cleanParams[k] = params[k];
       }
     }

@@ -140,6 +140,12 @@ export class BlogPostController {
         status,
       });
 
+      // ✅ Cache HTTP: CDN/navegador responde sem bater no servidor (transparente ao frontend)
+      res.setHeader(
+        'Cache-Control',
+        'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
+      );
+
       const cached = getCache<any>(cacheKey);
       if (cached) {
         return res.status(200).json(cached);
@@ -192,6 +198,12 @@ export class BlogPostController {
       }
 
       const cacheKey = generateKey('blog_posts:slug', { slug });
+
+      // ✅ Cache HTTP para o detalhe do post (payload inalterado)
+      res.setHeader(
+        'Cache-Control',
+        'public, max-age=300, s-maxage=1800, stale-while-revalidate=3600'
+      );
       const cached = getCache<any>(cacheKey);
       if (cached) {
         return res.status(200).json(cached);

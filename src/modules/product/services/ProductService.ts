@@ -4,6 +4,8 @@ import {
   CommercialType,
   CreateProductDTO,
   Product,
+  ProductListItem,
+  ListProductsParams,
   UpdateProductDTO,
 } from '../types/Product';
 import { ProductRepository } from '../repositories/ProductRepository';
@@ -63,13 +65,20 @@ export class ProductService {
       .replace(/^-+|-+$/g, '');
   }
 
-  async findAll(filters?: {
-    categoryId?: string;
-    commercialType?: CommercialType;
-    active?: boolean;
-    featured?: boolean;
-  }): Promise<Product[]> {
+  async findAll(filters?: ListProductsParams): Promise<Product[]> {
     return this.repository.findAll(filters);
+  }
+
+  /**
+   * Listagem PAGINADA (projeção leve + total).
+   * `offset` é calculado a partir de page/limit/cursor pelos controllers.
+   */
+  async findAllPaginated(
+    filters: ListProductsParams,
+    offset: number,
+    limit: number
+  ): Promise<{ items: ProductListItem[]; total: number }> {
+    return this.repository.findAllPaginated(filters, offset, limit);
   }
 
   async findById(id: string): Promise<Product> {

@@ -3,9 +3,16 @@
 import { supabase } from '../../../config/supabase';
 import {
   Product,
+  ProductListItem,
+  ListProductsParams,
   CreateProductDTO,
   UpdateProductDTO,
 } from '../types/Product';
+
+// ✅ Campos essenciais da LISTAGEM (card do frontend).
+// Exclui descrição longa, textos HTML, SEO, paths de storage.
+const LIST_COLUMNS =
+  'id, category_id, name, slug, commercial_type, price, redirect_url, image_url, featured, display_order, active';
 
 export class ProductRepository {
   private readonly table = 'products';
@@ -52,6 +59,8 @@ export class ProductRepository {
   }): Promise<Product[]> {
     let query = supabase
       .from(this.table)
+      // ✅ Mantém select('*') para compatibilidade com o contrato completo.
+      // O endpoint paginado (findAllPaginated) usa projeção leve.
       .select('*')
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
@@ -81,6 +90,52 @@ export class ProductRepository {
     return (data ?? []).map((row: any) => this.mapRow(row));
   }
 
+  /**
+   * Listagem PAGINADA com projeção leve (ListColumns → ProductListItem).
+   * Retorna os itens da página + o total de registros que casam com o filtro.
+   */
+  async findAllPaginated(
+    filters: ListProductsParams,
+    offset: number,
+    limit: number
+  ): Promise<{ items: ProductListItem[]; total: number }> {
+    let query = supabase
+      .from(this.table)
+      .select(LIST_COLUMNS, { count: 'exact' })
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (filters?.categoryId) {
+      query = query.eq('category_id', filters.categoryId);
+    }
+
+    if (filters?.commercialType) {
+      query = query.eq('commercial_type', filters.commercialType);
+    }
+
+    if (filters?.active !== undefined) {
+      query = query.eq('active', filters.active);
+    }
+
+    if (filters?.featured !== undefined) {
+      query = query.eq('featured', filters.featured);
+    }
+
+    const { data, error, count } = await query.range(
+      offset,
+      offset + limit - 1
+    );
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      items: (data ?? []).map((row: any) => this.mapListItem(row)),
+      total: count || 0,
+    };
+  }
+
   async findById(id: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from(this.table)
@@ -107,6 +162,42 @@ export class ProductRepository {
     }
 
     return data ? this.mapRow(data) : null;
+  }
+
+  // ✅ Busca vários produtos por IDs (projeção leve, para exibição no blog)
+  // ⚠️ Filtra apenas produtos ATIVOS (active = true) — produtos inativos ou
+  // deletados não aparecem na landing page.
+  async findByIds(ids: string[]): Promise<ProductListItem[]> {
+    if (!ids || ids.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from(this.table)
+      .select(LIST_COLUMNS)
+      .in('id', ids)
+      .eq('active', true);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((row: any) => this.mapListItem(row));
+  }
+
+  // Mapeia uma linha (com LIST_COLUMNS) para o formato leve do card
+  private mapListItem(row: any): ProductListItem {
+    return {
+      id: row.id,
+      categoryId: row.category_id,
+      name: row.name,
+      slug: row.slug,
+      commercialType: row.commercial_type,
+      price: row.price,
+      redirectUrl: row.redirect_url,
+      imageUrl: row.image_url,
+      featured: row.featured,
+      displayOrder: row.display_order,
+      active: row.active,
+    };
   }
 
   async slugExists(slug: string, excludeId?: string): Promise<boolean> {

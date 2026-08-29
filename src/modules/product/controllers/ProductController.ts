@@ -11,6 +11,11 @@ import {
   TTL_PRODUCTS,
   TTL_PRODUCT_DETAIL,
 } from '../../../lib/cache';
+import {
+  normalizePagination,
+  offsetFrom,
+  buildPaginationMeta,
+} from '../../../lib/pagination';
 
 export class ProductController {
   constructor(
@@ -29,36 +34,75 @@ export class ProductController {
         featured,
       } = req.query;
 
+      const pagination = normalizePagination(req.query);
+      const hasPagination =
+        req.query.page !== undefined ||
+        req.query.limit !== undefined ||
+        req.query.cursor !== undefined;
+
       const cacheKey = generateKey('products:list', {
         categoryId,
         commercialType,
         active,
         featured,
+        page: hasPagination ? pagination.page : undefined,
+        limit: hasPagination ? pagination.limit : undefined,
+        cursor: hasPagination ? req.query.cursor : undefined,
       });
 
-      const cached = getCache<any[]>(cacheKey);
+      const cached = getCache<any>(cacheKey);
       if (cached) {
         res.status(200).json(cached);
         return;
       }
 
-      const products =
-        await this.service.findAll({
-          categoryId: categoryId as string | undefined,
+      const filters = {
+        categoryId: categoryId as string | undefined,
 
-          commercialType:
-            commercialType as CommercialType | undefined,
+        commercialType:
+          commercialType as CommercialType | undefined,
 
-          active:
-            active !== undefined
-              ? active === 'true'
-              : undefined,
+        active:
+          active !== undefined
+            ? active === 'true'
+            : undefined,
 
-          featured:
-            featured !== undefined
-              ? featured === 'true'
-              : undefined,
-        });
+        featured:
+          featured !== undefined
+            ? featured === 'true'
+            : undefined,
+      };
+
+      if (hasPagination) {
+        // ============ MODO PAGINADO (novo, gradual) ============
+        // GET /api/products?limit=20&page=1 | ?limit=20&cursor=xxx
+        const offset = offsetFrom(pagination);
+
+        const { items, total } =
+          await this.service.findAllPaginated(
+            filters,
+            offset,
+            pagination.limit
+          );
+
+        const payload = {
+          success: true,
+          data: items,
+          pagination: buildPaginationMeta(
+            total,
+            offset,
+            pagination.limit
+          ),
+        };
+
+        setCache(cacheKey, payload, TTL_PRODUCTS);
+        res.status(200).json(payload);
+        return;
+      }
+
+      // ============ MODO LEGADO (sem paginação: array puro) ============
+      // Mantém a compatibilidade com o frontend atual.
+      const products = await this.service.findAll(filters);
 
       setCache(cacheKey, products, TTL_PRODUCTS);
       res.status(200).json(products);

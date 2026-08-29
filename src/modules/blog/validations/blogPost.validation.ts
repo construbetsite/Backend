@@ -20,8 +20,9 @@ export const createBlogPostSchema = Joi.object({
 
   type: Joi.string().valid('article', 'video', 'news').default('article'),
   tags: Joi.array().items(Joi.string().min(1)).optional(),
+  product_ids: Joi.array().items(Joi.string().uuid()).optional(),
+  productIds: Joi.array().items(Joi.string().uuid()).optional(),
   featured: Joi.boolean().optional(),
-  status: Joi.boolean().default(true),
 
   // ✅ Campos de vídeo (aceitando todas as variações)
   video1: Joi.string().uri().allow('').optional(),
@@ -74,6 +75,9 @@ export const createBlogPostSchema = Joi.object({
   if (value.categoriaId && !value.categoria_id) value.categoria_id = value.categoriaId;
   if (value.categoria_id && !value.categoriaId) value.categoriaId = value.categoria_id;
 
+  // Normalizar productIds → product_ids (frontend envia camelCase)
+  if (value.productIds !== undefined) value.product_ids = value.productIds;
+
   // Normalizar publishedAt / published_at
   if (value.publishedAt && !value.published_at) value.published_at = value.publishedAt;
   if (value.published_at && !value.publishedAt) value.publishedAt = value.published_at;
@@ -113,6 +117,8 @@ export const updateBlogPostSchema = Joi.object({
 
   type: Joi.string().valid('article', 'video', 'news').optional(),
   tags: Joi.array().items(Joi.string().min(1)).optional(),
+  product_ids: Joi.array().items(Joi.string().uuid()).optional(),
+  productIds: Joi.array().items(Joi.string().uuid()).optional(),
   featured: Joi.boolean().optional(),
   status: Joi.boolean().optional(),
 
@@ -162,6 +168,8 @@ export const updateBlogPostSchema = Joi.object({
 
   if (value.categoriaId && !value.categoria_id) value.categoria_id = value.categoriaId;
   if (value.categoria_id && !value.categoriaId) value.categoriaId = value.categoria_id;
+
+  if (value.productIds !== undefined) value.product_ids = value.productIds;
 
   if (value.publishedAt && !value.published_at) value.published_at = value.publishedAt;
   if (value.published_at && !value.publishedAt) value.publishedAt = value.published_at;

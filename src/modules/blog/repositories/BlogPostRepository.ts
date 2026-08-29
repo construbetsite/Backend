@@ -1,6 +1,29 @@
 import { supabase } from '../../../config/supabase';
 import { BlogPost, BlogPostRow, ListBlogPostsParams } from '../types/blogPost.types';
 
+// ✅ LISTAGEM LEVE: apenas os campos que o card do frontend usa.
+// Exclui `content` (corpo em HTML — item mais pesado), `video1/video2`,
+// `author_image` e os metadados de storage.
+const LIST_COLUMNS = `
+  id,
+  slug,
+  title,
+  description,
+  category,
+  categoria_id,
+  reading_time,
+  type,
+  featured,
+  status,
+  image_url,
+  author,
+  product_ids,
+  tags,
+  created_at,
+  updated_at,
+  published_at
+`;
+
 export class BlogPostRepository {
   // ✅ Buscar por UUID
   async findById(id: string): Promise<BlogPost | null> {
@@ -61,35 +84,10 @@ export class BlogPostRepository {
 
     let query = supabase
       .from('blog_posts')
-      // ✅ Projeção explícita: evita trazer colunas desnecessárias.
-      // O mapRowToPost continua montando o contrato completo (payload inalterado).
-      .select(`
-        id,
-        slug,
-        title,
-        description,
-        content,
-        category,
-        categoria_id,
-        reading_time,
-        type,
-        featured,
-        status,
-        image_url,
-        image_path,
-        image_filename,
-        image_size,
-        image_mime_type,
-        storage_bucket,
-        video1,
-        video2,
-        author,
-        author_image,
-        tags,
-        created_at,
-        updated_at,
-        published_at
-      `, { count: 'exact' })
+      // ✅ Projeção leve: sem `content`, vídeos e metadados de storage.
+      // O mapRowToPost continua montando o contrato completo, preenchendo
+      // os campos ausentes com fallbacks (''/null) — payload backend reduzido.
+      .select(LIST_COLUMNS, { count: 'exact' })
       .order('created_at', { ascending: false });
 
     if (category) {
@@ -116,7 +114,7 @@ export class BlogPostRepository {
       throw error;
     }
 
-    const mappedData = (data || []).map((row: BlogPostRow) => this.mapRowToPost(row));
+    const mappedData = (data || []).map((row: any) => this.mapRowToPost(row as BlogPostRow));
 
     return { data: mappedData, count: count || 0 };
   }
@@ -138,6 +136,7 @@ export class BlogPostRepository {
         author: data.author || null,
         author_image: data.author_image || null,
         tags: data.tags || null,
+        product_ids: data.product_ids || [],
 
         // ✅ CAMPOS DE IMAGEM
         image_url: data.image_url || null,
@@ -185,6 +184,7 @@ export class BlogPostRepository {
     if (data.author !== undefined) updateData.author = data.author;
     if (data.author_image !== undefined) updateData.author_image = data.author_image;
     if (data.tags !== undefined) updateData.tags = data.tags;
+    if (data.product_ids !== undefined) updateData.product_ids = data.product_ids;
     if(data.video1 !== undefined) updateData.video1 = data.video1;
     if(data.video2 !== undefined) updateData.video2 = data.video2;
 
@@ -255,6 +255,7 @@ export class BlogPostRepository {
       author: row.author || '',
       author_image: row.author_image || '',
       tags: row.tags || [],
+      product_ids: row.product_ids || [],
       created_at: row.created_at,
       updated_at: row.updated_at || row.created_at,
       published_at: row.published_at || null,

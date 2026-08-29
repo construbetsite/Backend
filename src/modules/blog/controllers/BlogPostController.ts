@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 import { BlogPostService } from '../services/BlogPostService';
 import { AppError } from '../errors/AppError';
 import {
+  buildPaginationMeta,
+  normalizePagination,
+} from '../../../lib/pagination';
+import {
   getCache,
   setCache,
   generateKey,
@@ -61,8 +65,17 @@ export class BlogPostController {
       // ✅ LOG DO BODY ORIGINAL
       console.log('📥 [Controller CREATE] Body original:', req.body);
 
+      // ✅ MAPPING EXPLÍCITO: frontend envia productIds (camelCase) → product_ids (snake_case)
+      if (req.body.productIds !== undefined && req.body.product_ids === undefined) {
+        req.body.product_ids = req.body.productIds;
+      }
+
       // ✅ Converter dados para snake_case antes de enviar ao service
       const data = toSnakeCase(req.body);
+
+      // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM E VÍDEO E PRODUTOS)
+      console.log('🐛 [Controller CREATE] productIds no body:', req.body.productIds);
+      console.log('🐛 [Controller CREATE] product_ids p/ service:', data.product_ids);
 
       // ✅ LOG DOS DADOS CONVERTIDOS (CAMPOS DE IMAGEM E VÍDEO)
       console.log('📥 [Controller CREATE] Dados convertidos:', {
@@ -108,11 +121,19 @@ export class BlogPostController {
   // GET /api/blog/posts?page=&limit=&category=&tag=&featured=&status=
   list = async (req: Request, res: Response) => {
     try {
-      const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+      // ✅ Suporte a cursor (opcional) ou page/limit
+      const { page: cursorPage, limit: paginationLimit } = normalizePagination(req.query);
+
+      const page =
+        req.query.cursor !== undefined
+          ? cursorPage
+          : Math.max(1, parseInt(req.query.page as string, 10) || 1);
+
       const limit = Math.min(
         100,
-        Math.max(1, parseInt(req.query.limit as string, 10) || 10)
+        Math.max(1, parseInt(req.query.limit as string, 10) || paginationLimit)
       );
+
       const category =
         typeof req.query.category === 'string' ? req.query.category : undefined;
       const tag = typeof req.query.tag === 'string' ? req.query.tag : undefined;
@@ -134,6 +155,7 @@ export class BlogPostController {
       const cacheKey = generateKey('blog_posts:list', {
         page,
         limit,
+        cursor: req.query.cursor,
         category,
         tag,
         featured,
@@ -161,15 +183,20 @@ export class BlogPostController {
       });
 
       const totalPages = Math.ceil(total / limit);
+      const offset = (page - 1) * limit;
+
+      const pagination = buildPaginationMeta(total, offset, limit);
 
       const responsePayload = {
         success: true,
         data: items,
         pagination: {
-          page,
-          limit,
-          total,
+          page: pagination.page,
+          limit: pagination.limit,
+          total: pagination.total,
           totalPages,
+          hasMore: pagination.hasMore,
+          nextCursor: pagination.nextCursor,
         },
       };
 
@@ -197,7 +224,11 @@ export class BlogPostController {
         });
       }
 
-      const cacheKey = generateKey('blog_posts:slug', { slug });
+      // ✅ Chave de cache inclui o `include` (versões plain vs enriched são distintas)
+      const cacheKey = generateKey('blog_posts:slug', {
+        slug,
+        include: req.query.include || 'none',
+      });
 
       // ✅ Cache HTTP para o detalhe do post (payload inalterado)
       res.setHeader(
@@ -210,7 +241,13 @@ export class BlogPostController {
       }
 
       console.log(`🔍 Buscando post por slug: ${slug}`);
-      const post = await this.service.findBySlug(slug);
+
+      // ✅ ?include=products → retorna o post com os produtos vinculados
+      const includeProducts = req.query.include === 'products';
+      const post = includeProducts
+        ? await this.service.findBySlugWithProducts(slug)
+        : await this.service.findBySlug(slug);
+
       const responsePayload = { success: true, data: post };
       setCache(cacheKey, responsePayload, TTL_BLOG_POSTS);
 
@@ -237,7 +274,12 @@ export class BlogPostController {
       }
 
       console.log(`🔍 Buscando post por ID: ${id}`);
-      const post = await this.service.findById(id);
+
+      // ✅ ?include=products → retorna o post com os produtos vinculados
+      const includeProducts = req.query.include === 'products';
+      const post = includeProducts
+        ? await this.service.findByIdWithProducts(id)
+        : await this.service.findById(id);
 
       // ✅ LOG DO POST ENCONTRADO
       console.log('✅ [Controller findById] Post encontrado:', {
@@ -297,6 +339,21 @@ export class BlogPostController {
       // 🔥 Remover campos que não devem ser atualizados
       delete data.id;
       delete data.created_at;
+
+      // ✅ MAPPING EXPLÍCITO: frontend envia productIds (camelCase) → product_ids (snake_case)
+      // Prioridade: Joi já normalizou (data.product_ids) → req.body.productIds (original) → req.body.product_ids
+      if (data.product_ids === undefined) {
+        if (req.body.productIds !== undefined) {
+          data.product_ids = req.body.productIds;
+        } else if (req.body.product_ids !== undefined) {
+          data.product_ids = req.body.product_ids;
+        }
+      }
+
+      // ✅ LOG DE DEPURAÇÃO: valores que chegaram ao update
+      console.log('🐛 [Controller UPDATE] productIds no body:', req.body.productIds);
+      console.log('🐛 [Controller UPDATE] product_ids no body:', req.body.product_ids);
+      console.log('🐛 [Controller UPDATE] updateData p/ service:', JSON.stringify(data));
 
       const post = await this.service.update(id, data);
 

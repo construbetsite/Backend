@@ -5,6 +5,11 @@ import { Router } from 'express';
 import { ProductRepository } from '../repositories/ProductRepository';
 import { ProductService } from '../services/ProductService';
 import { ProductController } from '../controllers/ProductController';
+import {
+  createProductSchema,
+  updateProductSchema,
+  validateBody,
+} from '../validations/productValidation';
 
 const router = Router();
 
@@ -30,12 +35,12 @@ router.get('/:id', controller.findById);
 
 // Criar produto
 // POST /api/products
-router.post('/', controller.create);
+router.post('/', validateBody(createProductSchema), controller.create);
 
 
 // Atualizar produto
 // PUT /api/products/:id
-router.put('/:id', controller.update);
+router.put('/:id', validateBody(updateProductSchema), controller.update);
 
 
 // Excluir produto

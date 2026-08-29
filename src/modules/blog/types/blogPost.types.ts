@@ -17,7 +17,7 @@ export interface BlogPost {
   title: string | null;
   description: string | null;
   content: string | null;
-  
+
   // ✅ CAMPOS DE IMAGEM CORRETOS
   image_url: string | null;
   image_path: string | null;
@@ -25,7 +25,7 @@ export interface BlogPost {
   image_size: number | null;
   image_mime_type: string | null;
   storage_bucket: string | null;
-  
+
   category: string | null;
   categoria_id: string | null;
   reading_time: string;
@@ -36,10 +36,11 @@ export interface BlogPost {
   author: string | null;
   author_image: string | null;
   tags: any;
-  
+  product_ids: string[];
+
   // ✅ STATUS
   status: boolean;
-  
+
   created_at: string;
   updated_at: string;
   published_at: string | null;
@@ -51,7 +52,7 @@ export interface BlogPostRow {
   title: string | null;
   description: string | null;
   content: string | null;
-  
+
   // ✅ CAMPOS DE IMAGEM CORRETOS
   image_url: string | null;
   image_path: string | null;
@@ -59,13 +60,14 @@ export interface BlogPostRow {
   image_size: number | null;
   image_mime_type: string | null;
   storage_bucket: string | null;
-  
+
   category: string | null;
   categoria_id: string | null;
   reading_time: string;
 
   type: PostType | null;
   tags: string[] | null;
+  product_ids: string[] | null;
   featured: boolean | null;
   status: boolean | null;  // ✅ status (não ativo)
   video1: string | null;
@@ -100,6 +102,8 @@ export interface CreatePostDTO {
   author?: string | null;
   author_image?: string | null;
   tags?: any;
+  product_ids?: string[];
+  productIds?: string[];
   image_url?: string | null;
   image_path?: string | null;
   image_filename?: string | null;
@@ -122,6 +126,8 @@ export interface UpdatePostDTO {
   author?: string | null;
   author_image?: string | null;
   tags?: any;
+  product_ids?: string[];
+  productIds?: string[];
   image_url?: string | null;
   image_path?: string | null;
   image_filename?: string | null;

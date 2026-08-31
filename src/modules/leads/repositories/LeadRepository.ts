@@ -4,23 +4,15 @@ import { env } from '../../../config/env';
 
 /**
  * Dados que o repositório aceita para criação:
- * payload da API (CreateLeadDTO) + campos de rastreamento
- * (ip e user_agent) preenchidos pelo backend.
+ * payload da API (CreateLeadDTO) — sem campos de rastreamento.
  */
-export type CreateLeadRepositoryData = CreateLeadDTO & {
-  ip?: string | null;
-  user_agent?: string | null;
-};
+export type CreateLeadRepositoryData = CreateLeadDTO;
 
 // ============================================================
 // DETECÇÃO DINÂMICA DE COLUNAS DA TABELA `leads`
 // ------------------------------------------------------------
-// A tabela pode ter sido criada com variações de schema
-// (ex.: `name` em vez de `nome`; sem `status`/`ip`/`user_agent`).
-// Consultamos o schema via OpenAPI do PostgREST (uma vez, com
-// cache em memória) e inserimos apenas as colunas existentes.
-// Quando a migração adicionar as colunas do spec, elas passam
-// a ser gravadas automaticamente — sem alterar o código.
+// Consultamos o schema via OpenAPI do PostgREST (cache em memória)
+// e inserimos apenas as colunas existentes.
 // ============================================================
 
 let leadsColumnsCache: Set<string> | null = null;
@@ -48,10 +40,9 @@ async function getLeadsColumns(): Promise<Set<string>> {
     );
   } catch (err) {
     console.error('⚠️ Não foi possível detectar o schema da tabela leads:', err);
-    // Fallback: assume schema completo do spec
+    // Fallback com colunas essenciais
     leadsColumnsCache = new Set([
-      'id', 'nome', 'name', 'email', 'whatsapp',
-      'ip', 'user_agent', 'status', 'created_at', 'updated_at',
+      'id', 'nome', 'name', 'email', 'whatsapp', 'created_at', 'updated_at'
     ]);
   }
 
@@ -66,32 +57,20 @@ export class LeadRepository {
   async create(data: CreateLeadRepositoryData): Promise<Lead> {
     const columns = await getLeadsColumns();
 
-    // ✅ Constrói o objeto completo do spec
+    // Constrói o objeto com os campos recebidos (sem ip/user_agent)
     const insertData: Record<string, unknown> = {
       nome: data.nome,
       email: data.email,
       whatsapp: data.whatsapp || null,
-      status: true,
-      user_agent: data.user_agent || null,
     };
 
-    // ✅ IP: o Express entrega IPv6 (::ffff:189.23.4.5) → guardamos o IPv4 legível
-    if (data.ip) {
-      const ipv4 = data.ip.includes('::ffff:')
-        ? data.ip.replace('::ffff:', '')
-        : data.ip;
-      insertData.ip = ipv4 || null;
-    } else {
-      insertData.ip = null;
-    }
-
-    // ✅ Compatibilidade: schema com `name` (legado) em vez de `nome`
+    // Compatibilidade: schema com `name` (legado) em vez de `nome`
     if (!columns.has('nome') && columns.has('name')) {
       insertData.name = data.nome;
       delete insertData.nome;
     }
 
-    // ✅ Remove colunas que ainda não existem na tabela
+    // Remove colunas que não existem na tabela (ex: status, se não existir)
     for (const key of Object.keys(insertData)) {
       if (!columns.has(key)) {
         console.warn(`⚠️ Coluna '${key}' não existe na tabela leads — inserção pulada.`);
@@ -138,7 +117,6 @@ export class LeadRepository {
    * Ordenação padrão: created_at DESC.
    */
   async findAll(params: ListLeadsParams): Promise<{ data: Lead[]; count: number }> {
-    // ✅ Colunas reais da tabela (supporta nome/name, schema legado)
     const columns = await getLeadsColumns();
 
     const page = params.page ?? 1;
@@ -149,10 +127,9 @@ export class LeadRepository {
       .from('leads')
       .select('*', { count: 'exact' });
 
-    // ✅ Busca por nome/email/whatsapp (contains, case-insensitive)
+    // Busca por nome/email/whatsapp (contains, case-insensitive)
     if (params.search) {
       const term = this.escapeLike(params.search.trim());
-      // A coluna do nome pode ser `nome` (spec) ou `name` (schema legado)
       const nameColumn = columns.has('nome') ? 'nome' : 'name';
       const searchClauses: string[] = [];
 
@@ -171,27 +148,26 @@ export class LeadRepository {
       }
     }
 
-    // ✅ Filtro por status (boolean)
+    // Filtro por status (se existir)
     if (params.status !== undefined && columns.has('status')) {
       query = query.eq('status', params.status);
     }
 
-    // ✅ Filtro por data de criação (inclusive)
+    // Filtro por data de criação
     if (params.startDate && columns.has('created_at')) {
       query = query.gte('created_at', params.startDate);
     }
 
     if (params.endDate && columns.has('created_at')) {
-      // data-only (2026-08-29) → fim do dia, para incluir o dia inteiro
       query = query.lte('created_at', this.normalizeEndDate(params.endDate));
     }
 
-    // ✅ Ordenação adaptativa + whitelist (defesa em profundidade)
+    // Ordenação adaptativa
     const sortBy = this.safeSortBy(params.sortBy, columns);
     const ascending = (params.sortOrder ?? 'DESC') === 'ASC';
     query = query.order(sortBy, { ascending });
 
-    // ✅ Paginação offset/limit
+    // Paginação
     const { data, error, count } = await query.range(offset, offset + limit - 1);
 
     if (error) {
@@ -226,12 +202,10 @@ export class LeadRepository {
   }
 
   // ✅ MAPEAMENTO: linha do banco → contrato da API
-  /** Escape de curingas LIKE para busca literal. */
   private escapeLike(term: string): string {
     return term.replace(/[%_]/g, (m) => '\\' + m);
   }
 
-  /** data-only => fim do dia (inclusivo); data-hora passa como está. */
   private normalizeEndDate(value: string): string {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       return `${value}T23:59:59.999Z`;
@@ -239,8 +213,8 @@ export class LeadRepository {
     return value;
   }
 
-  /** Whitelist de colunas para ordenação (evita injeção de SQL) + adaptação nome/name. */
   private safeSortBy(value: string | undefined, columns: Set<string>): string {
+    // Colunas permitidas para ordenação (sem ip/user_agent)
     const allowed = [
       'id', 'nome', 'email', 'whatsapp',
       'status', 'created_at', 'updated_at',
@@ -260,16 +234,14 @@ export class LeadRepository {
 
     return field;
   }
-  // Aceita `nome` (spec) ou `name` (legado)
+
   private mapRowToLead(row: LeadRow & { name?: string | null }): Lead {
     return {
       id: row.id,
       nome: row.nome ?? row.name ?? '',
       email: row.email,
       whatsapp: row.whatsapp || null,
-      ip: row.ip || null,
-      user_agent: row.user_agent || null,
-      status: row.status ?? true,
+      status: row.status ?? true,   // se status não existir no banco, retorna true (mas não será enviado)
       created_at: row.created_at,
       updated_at: row.updated_at || row.created_at,
     };

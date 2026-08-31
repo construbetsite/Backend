@@ -10,6 +10,9 @@ import {
   setCache,
   generateKey,
   invalidatePrefix,
+  sendWithConditionalCache,
+  CACHE_CONTROL_DYNAMIC,
+  CACHE_CONTROL_DETAIL,
   TTL_BLOG_POSTS,
 } from '../../../lib/cache';
 
@@ -163,14 +166,11 @@ export class BlogPostController {
       });
 
       // ✅ Cache HTTP: CDN/navegador responde sem bater no servidor (transparente ao frontend)
-      res.setHeader(
-        'Cache-Control',
-        'public, max-age=60, s-maxage=300, stale-while-revalidate=600'
-      );
-
+      // ✅ ETag + Cache-Control: 304 em <50ms se nada mudou
       const cached = getCache<any>(cacheKey);
       if (cached) {
-        return res.status(200).json(cached);
+        sendWithConditionalCache(req, res, cached, CACHE_CONTROL_DYNAMIC);
+        return;
       }
 
       const { items, total } = await this.service.list({
@@ -202,7 +202,8 @@ export class BlogPostController {
 
       setCache(cacheKey, responsePayload, TTL_BLOG_POSTS);
 
-      return res.status(200).json(responsePayload);
+      sendWithConditionalCache(req, res, responsePayload, CACHE_CONTROL_DYNAMIC);
+      return;
     } catch (error) {
       console.error('[BlogPostController.list]', error);
       return res.status(this.errorStatus(error)).json({
@@ -230,14 +231,11 @@ export class BlogPostController {
         include: req.query.include || 'none',
       });
 
-      // ✅ Cache HTTP para o detalhe do post (payload inalterado)
-      res.setHeader(
-        'Cache-Control',
-        'public, max-age=300, s-maxage=1800, stale-while-revalidate=3600'
-      );
+      // ✅ Cache HTTP para o detalhe do post (payload inalterado) + ETag ultraleve
       const cached = getCache<any>(cacheKey);
       if (cached) {
-        return res.status(200).json(cached);
+        sendWithConditionalCache(req, res, cached, CACHE_CONTROL_DETAIL);
+        return;
       }
 
       console.log(`🔍 Buscando post por slug: ${slug}`);
@@ -251,7 +249,8 @@ export class BlogPostController {
       const responsePayload = { success: true, data: post };
       setCache(cacheKey, responsePayload, TTL_BLOG_POSTS);
 
-      return res.status(200).json(responsePayload);
+      sendWithConditionalCache(req, res, responsePayload, CACHE_CONTROL_DETAIL);
+      return;
     } catch (error) {
       console.error('[BlogPostController.findBySlug]', error);
       return res.status(this.errorStatus(error)).json({

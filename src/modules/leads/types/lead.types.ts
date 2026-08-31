@@ -10,12 +10,18 @@ export interface Lead {
   nome: string;
   email: string;
   whatsapp: string | null;
-  ip: string | null;
-  user_agent: string | null;
   status: boolean;
   created_at: string;
   updated_at: string;
 }
+
+export interface CreateLeadDTO {
+  nome: string;
+  email: string;
+  whatsapp?: string | null;
+}
+
+// LeadRow já está ok (sem ip/user_agent)
 
 /**
  * LeadRow: mesma estrutura usada para mapear a linha do banco.
@@ -25,8 +31,6 @@ export interface LeadRow {
   nome: string;
   email: string;
   whatsapp: string | null;
-  ip: string | null;
-  user_agent: string | null;
   status: boolean;
   created_at: string;
   updated_at: string;

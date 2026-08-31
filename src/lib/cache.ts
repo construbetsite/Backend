@@ -1,4 +1,5 @@
 import NodeCache from 'node-cache';
+import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 
 // TTLs padrão (em segundos) – definidos diretamente no código
@@ -77,6 +78,46 @@ export function invalidatePrefix(prefix: string): number {
   }
   return 0;
 }
+
+// ============================================================
+// ETag / Revalidação condicional (304) ULTRALEVE
+// → O hash é calculado a partir do payload JÁ em cache (sem
+//   consultar o banco), tornando o 304 < 50ms.
+// ============================================================
+export function computeEtag(payload: any): string {
+  return `"${crypto.createHash('sha1').update(JSON.stringify(payload)).digest('hex')}"`;
+}
+
+/**
+ * Aplica ETag + Cache-Control e responde 304 quando If-None-Match casa.
+ * Retorna true se a resposta 304 já foi enviada (chamador deve retornar).
+ */
+export function sendWithConditionalCache(
+  req: Request,
+  res: Response,
+  payload: any,
+  cacheControl: string,
+  status: 200 | 201 = 200
+): boolean {
+  res.setHeader('Cache-Control', cacheControl);
+  const etag = computeEtag(payload);
+  res.setHeader('ETag', etag);
+
+  const ifNoneMatch = req.headers['if-none-match'];
+  if (ifNoneMatch && ifNoneMatch.split(',').map((t) => t.trim()).includes(etag)) {
+    res.status(304).end();
+    return true;
+  }
+
+  res.status(status).json(payload);
+  return false;
+}
+
+// Política de cache HTTP para endpoints dinâmicos (produtos/posts)
+export const CACHE_CONTROL_DYNAMIC =
+  'public, max-age=60, stale-while-revalidate=3600';
+export const CACHE_CONTROL_DETAIL =
+  'public, max-age=60, s-maxage=300, stale-while-revalidate=3600';
 
 // Middleware opcional para rotas GET Express
 export function cacheResponse(ttl: number = DEFAULT_TTL) {

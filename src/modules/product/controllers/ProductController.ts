@@ -8,6 +8,9 @@ import {
   setCache,
   generateKey,
   invalidatePrefix,
+  sendWithConditionalCache,
+  CACHE_CONTROL_DYNAMIC,
+  CACHE_CONTROL_DETAIL,
   TTL_PRODUCTS,
   TTL_PRODUCT_DETAIL,
 } from '../../../lib/cache';
@@ -52,7 +55,8 @@ export class ProductController {
 
       const cached = getCache<any>(cacheKey);
       if (cached) {
-        res.status(200).json(cached);
+        // ✅ ETag + Cache-Control: 304 em <50ms se nada mudou
+        sendWithConditionalCache(req, res, cached, CACHE_CONTROL_DYNAMIC);
         return;
       }
 
@@ -96,7 +100,7 @@ export class ProductController {
         };
 
         setCache(cacheKey, payload, TTL_PRODUCTS);
-        res.status(200).json(payload);
+        sendWithConditionalCache(req, res, payload, CACHE_CONTROL_DYNAMIC);
         return;
       }
 
@@ -105,7 +109,7 @@ export class ProductController {
       const products = await this.service.findAll(filters);
 
       setCache(cacheKey, products, TTL_PRODUCTS);
-      res.status(200).json(products);
+      sendWithConditionalCache(req, res, products, CACHE_CONTROL_DYNAMIC);
     } catch (error: any) {
       res.status(500).json({
         message: error.message,
@@ -123,7 +127,7 @@ export class ProductController {
 
       const cached = getCache<any>(cacheKey);
       if (cached) {
-        res.status(200).json(cached);
+        sendWithConditionalCache(req, res, cached, CACHE_CONTROL_DETAIL);
         return;
       }
 
@@ -131,7 +135,7 @@ export class ProductController {
         await this.service.findById(id);
 
       setCache(cacheKey, product, TTL_PRODUCT_DETAIL);
-      res.status(200).json(product);
+      sendWithConditionalCache(req, res, product, CACHE_CONTROL_DETAIL);
     } catch (error: any) {
       res.status(404).json({
         message: error.message,
@@ -149,7 +153,7 @@ export class ProductController {
 
       const cached = getCache<any>(cacheKey);
       if (cached) {
-        res.status(200).json(cached);
+        sendWithConditionalCache(req, res, cached, CACHE_CONTROL_DETAIL);
         return;
       }
 
@@ -157,7 +161,7 @@ export class ProductController {
         await this.service.findBySlug(slug);
 
       setCache(cacheKey, product, TTL_PRODUCT_DETAIL);
-      res.status(200).json(product);
+      sendWithConditionalCache(req, res, product, CACHE_CONTROL_DETAIL);
     } catch (error: any) {
       res.status(404).json({
         message: error.message,

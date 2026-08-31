@@ -48,7 +48,6 @@ export class LeadController {
         nome: lead.nome,
         email: lead.email,
         whatsapp: lead.whatsapp,
-        ip: lead.ip,
         status: lead.status,
       });
 

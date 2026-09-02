@@ -5,7 +5,7 @@ import { ProductService } from '../services/ProductService';
 import { CommercialType } from '../types/Product';
 import {
   getCache,
-  setCache,
+  setCacheWithEtag, // 🔥 R1: grava ETag pré-calculado junto ao payload
   generateKey,
   invalidatePrefix,
   sendWithConditionalCache,
@@ -99,7 +99,7 @@ export class ProductController {
           ),
         };
 
-        setCache(cacheKey, payload, TTL_PRODUCTS);
+        setCacheWithEtag(cacheKey, payload, TTL_PRODUCTS); // 🔥 R1
         sendWithConditionalCache(req, res, payload, CACHE_CONTROL_DYNAMIC);
         return;
       }
@@ -108,7 +108,7 @@ export class ProductController {
       // Mantém a compatibilidade com o frontend atual.
       const products = await this.service.findAll(filters);
 
-      setCache(cacheKey, products, TTL_PRODUCTS);
+      setCacheWithEtag(cacheKey, products, TTL_PRODUCTS); // 🔥 R1
       sendWithConditionalCache(req, res, products, CACHE_CONTROL_DYNAMIC);
     } catch (error: any) {
       res.status(500).json({
@@ -134,7 +134,7 @@ export class ProductController {
       const product =
         await this.service.findById(id);
 
-      setCache(cacheKey, product, TTL_PRODUCT_DETAIL);
+      setCacheWithEtag(cacheKey, product, TTL_PRODUCT_DETAIL); // 🔥 R1
       sendWithConditionalCache(req, res, product, CACHE_CONTROL_DETAIL);
     } catch (error: any) {
       res.status(404).json({
@@ -160,7 +160,7 @@ export class ProductController {
       const product =
         await this.service.findBySlug(slug);
 
-      setCache(cacheKey, product, TTL_PRODUCT_DETAIL);
+      setCacheWithEtag(cacheKey, product, TTL_PRODUCT_DETAIL); // 🔥 R1
       sendWithConditionalCache(req, res, product, CACHE_CONTROL_DETAIL);
     } catch (error: any) {
       res.status(404).json({

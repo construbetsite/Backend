@@ -44,15 +44,28 @@ export function brotliCompression(
     }
 
     try {
-      const compressed = zlib.brotliCompressSync(payload);
-      res.setHeader('Content-Encoding', 'br');
-      res.setHeader('Vary', 'Accept-Encoding');
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      return originalSend(compressed);
+      // 🔥 CORREÇÃO (R3): compressão ASSÍNCRONA.
+      // brotliCompressSync bloqueia o event loop por dezenas de ms em payloads
+      // grandes, derrubando o throughput global sob concorrência. A versão com
+      // callback roda no pool de threads do zlib.
+      zlib.brotliCompress(payload, (err, compressed) => {
+        if (err || compressed.length >= payload.length) {
+          // Fallback: envia sem compressão (quando comprimir não compensa)
+          originalJson(body);
+          return;
+        }
+        res.setHeader('Content-Encoding', 'br');
+        res.setHeader('Vary', 'Accept-Encoding');
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        originalSend(compressed);
+      });
     } catch {
       // Fallback: envia sem compressão
       return originalJson(body);
     }
+    // 🔥 R3: a resposta em si é enviada no callback (async), mas o Express
+    // espera que res.json retorne a Response sincronamente.
+    return res;
   };
 
   return next();

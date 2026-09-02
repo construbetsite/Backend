@@ -267,6 +267,10 @@ export const updateProductSchema = Joi.object({
 // MIDDLEWARE DE VALIDAÇÃO
 // ============================================================
 
+// 🔥 CORREÇÃO (R4): logs de erro de validação apenas em desenvolvimento.
+// console.error é síncrono e impacta o event loop em produção sob alta concorrência.
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
 export const validateBody = (schema: Joi.ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const { error, value } = schema.validate(req.body, {
@@ -275,10 +279,12 @@ export const validateBody = (schema: Joi.ObjectSchema) => {
     });
 
     if (error) {
-      console.error(
-        '❌ Erro de validação:',
-        error.details.map((detail) => detail.message)
-      );
+      if (IS_DEV) {
+        console.error(
+          '❌ Erro de validação:',
+          error.details.map((detail) => detail.message)
+        );
+      }
 
       return res.status(400).json({
         success: false,

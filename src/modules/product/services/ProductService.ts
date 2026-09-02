@@ -104,22 +104,26 @@ export class ProductService {
   async create(data: CreateProductDTO): Promise<Product> {
     const slug = data.slug?.trim() || this.generateSlug(data.name);
 
-    const slugExists = await this.repository.slugExists(slug);
+    // 🔥 CORREÇÃO (R5): slugExists e skuExists agora rodam em PARALELO (Promise.all).
+    // Antes: 2 round-trips sequenciais ao Supabase. Agora: latência de 1 round-trip.
+    // A ordem das mensagens de erro é preservada (checagens fora do Promise.all).
+    const [slugTaken, skuTaken] = await Promise.all([
+      this.repository.slugExists(slug),
+      data.sku
+        ? this.repository.skuExists(data.sku)
+        : Promise.resolve(false as boolean),
+    ]);
 
-    if (slugExists) {
+    if (slugTaken) {
       throw new Error(
         'Já existe um produto utilizando este slug.'
       );
     }
 
-    if (data.sku) {
-      const skuExists = await this.repository.skuExists(data.sku);
-
-      if (skuExists) {
-        throw new Error(
-          'Já existe um produto utilizando este SKU.'
-        );
-      }
+    if (skuTaken) {
+      throw new Error(
+        'Já existe um produto utilizando este SKU.'
+      );
     }
 
     this.validateCommercialType({

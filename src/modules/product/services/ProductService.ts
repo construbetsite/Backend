@@ -9,6 +9,7 @@ import {
   UpdateProductDTO,
 } from '../types/Product';
 import { ProductRepository } from '../repositories/ProductRepository';
+import { ProductVitrineItem } from '../dtos/ProductVitrineDTO';
 
 export class ProductService {
   constructor(
@@ -79,6 +80,17 @@ export class ProductService {
     limit: number
   ): Promise<{ items: ProductListItem[]; total: number }> {
     return this.repository.findAllPaginated(filters, offset, limit);
+  }
+
+  /**
+   * Tarefa 2 — lista os itens da vitrine (cards da landing page).
+   * Delegate puro: a projeção enxuta acontece no repositório/SQL.
+   */
+  async findVitrine(
+    offset: number,
+    limit: number
+  ): Promise<{ items: ProductVitrineItem[]; total: number }> {
+    return this.repository.findVitrine(offset, limit);
   }
 
   async findById(id: string): Promise<Product> {

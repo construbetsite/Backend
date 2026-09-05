@@ -49,6 +49,10 @@ export class LandingCategoryRepository {
     return (data ?? []).map((row) => this.mapSliderRow(row));
   }
 
+  // ✅ Tarefa 4 — projeção pública (equivale ao contrato do frontend).
+  private readonly PUBLIC_COLUMNS =
+    'id, title, image, url, order, status';
+
   /**
    * Lista as categorias ordenadas pelo campo `order` (crescente).
    * Se `active` for informado, filtra por status (true = ativas).
@@ -58,7 +62,8 @@ export class LandingCategoryRepository {
   }): Promise<LandingCategory[]> {
     let query = supabase
       .from(this.table)
-      .select('*')
+      // ✅ Tarefa 4: projeção explícita (sem SELECT *) — timestamps não trafegam
+      .select(this.PUBLIC_COLUMNS)
       .order('order', { ascending: true })
       .order('title', { ascending: true });
 
@@ -78,7 +83,7 @@ export class LandingCategoryRepository {
   async findById(id: string | number): Promise<LandingCategory | null> {
     const { data, error } = await supabase
       .from(this.table)
-      .select('*')
+      .select(this.PUBLIC_COLUMNS)
       .eq('id', id)
       .maybeSingle();
 

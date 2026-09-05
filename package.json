@@ -5,7 +5,10 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "scan:rotas": "tsx scripts/route-scan.ts",
+    "report:rotas": "tsx scripts/payload-report-reader.ts",
+    "vitrine": "tsx scripts/vitrine-demo.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",

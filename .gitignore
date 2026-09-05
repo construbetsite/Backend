@@ -118,5 +118,6 @@ docker-compose.override.yml
 # ====================
 # Arquivos específicos do projeto
 # ====================
+reports/
 # (adicione outros específicos se necessário)
 # Exemplo: .env.local, .env.test, etc.

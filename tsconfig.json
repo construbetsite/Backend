@@ -10,7 +10,8 @@
     "forceConsistentCasingInFileNames": true, // Evita problemas de maiúsculas/minúsculas
     "noImplicitAny": true,             // Força declarar tipos explicitamente
     "resolveJsonModule": true,         // Permite importar arquivos JSON
-    "sourceMap": true                  // Gera arquivos .map para depuração
+    "sourceMap": true,                  // Gera arquivos .map para depuração
+    "types": ["node"]                  // Tipos do Node (process, __dirname, fs...)
   },
   "include": ["src"],                  // Quais arquivos TS compilar
   "exclude": ["node_modules", "dist"]  // Pastas que não serão compiladas

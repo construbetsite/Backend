@@ -169,3 +169,87 @@ export function cacheResponse(ttl: number = DEFAULT_TTL) {
     next();
   };
 }
+
+// ============================================================
+// Tarefa 4 — Cache da VITRINE (stale-while-revalidate no servidor)
+//
+// Estratégia de duas camadas com NodeCache:
+//   1. Entrada "fresca" (TTL curto): servida enquanto válida.
+//   2. Cópia "stale" (TTL longo): quando a fresca expira, a requisição
+//      recebe IMEDIATAMENTE o dado antigo (latência ~0) enquanto uma
+//      revalidação roda em background — sem esperar o banco.
+//
+// Single-flight: se 50 requisições chegam ao mesmo tempo com a chave
+// vazia, apenas UMA consulta ao banco é feita; as demais aguardam a
+// mesma promise (evita cache stampede / thundering herd).
+// ============================================================
+export const TTL_VITRINE = 60; // frescor: 1 minuto
+// stale permanece disponível por até 1h (fallback se o banco cair)
+export const TTL_VITRINE_STALE = 3600;
+
+// 💾 Detalhe de produto (slug/id): mesma política de stale-while-revalidate
+// da vitrine. Frescor = TTL_PRODUCT_DETAIL (5min); stale fica disponível
+// por até 1h como fallback caso o banco caia.
+export const TTL_PRODUCT_DETAIL_STALE = 3600;
+
+// Política HTTP para a vitrine: navegador revalida a cada 60s e o
+// CDN/proxy guarda por 5min; stale-while-revalidate=3600 permite
+// servir dado antigo imediatamente após expirar.
+export const CACHE_CONTROL_VITRINE =
+  'public, max-age=60, s-maxage=300, stale-while-revalidate=3600';
+
+// Promises em voo por chave — evita o stampede em cold start.
+const inflight = new Map<string, Promise<unknown>>();
+
+/**
+ * Lê da camada fresca; se ausente, serve a stale e dispara revalidação
+ * em background; se não houver nada, carrega do banco (single-flight).
+ * Sempre retorna a entrada envelopada `{ __etag, __body }`, pronta para
+ * o `sendWithConditionalCache` responder 304 sem recomputar hash.
+ */
+export async function serveFromCache<T>(
+  key: string,
+  freshTtl: number,
+  staleTtl: number,
+  loader: () => Promise<T>,
+  onError?: (err: unknown) => void
+): Promise<CachedWithEtag<T>> {
+  const fresh = cache.get<CachedWithEtag<T>>(key);
+  if (fresh !== undefined) return fresh;
+
+  const staleKey = `${key}:stale`;
+  const stale = cache.get<CachedWithEtag<T>>(staleKey);
+
+  const load = (): Promise<CachedWithEtag<T>> => {
+    const existing = inflight.get(key);
+    if (existing) return existing as Promise<CachedWithEtag<T>>;
+
+    const p = loader()
+      .then((value) => {
+        const entry = {
+          __etag: computeEtag(value),
+          __body: value,
+        } as CachedWithEtag<T>;
+        cache.set(key, entry, freshTtl);
+        cache.set(staleKey, entry, staleTtl);
+        return entry;
+      })
+      .finally(() => {
+        inflight.delete(key);
+      });
+
+    inflight.set(key, p);
+    return p;
+  };
+
+  if (stale !== undefined) {
+    // Serve o dado antigo na hora; a revalidação corre em background.
+    load().catch((err) => {
+      if (onError) onError(err);
+      else console.error('[CACHE-SWR] Revalidação falhou:', err);
+    });
+    return stale;
+  }
+
+  return load();
+}

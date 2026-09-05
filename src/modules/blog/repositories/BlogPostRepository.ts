@@ -24,12 +24,40 @@ const LIST_COLUMNS = `
   published_at
 `;
 
+// ✅ DETALHE público: tudo que a PÁGINA do post precisa (inclui content,
+// vídeos e author_image), mas EXCLUI metadados internos de storage
+// (image_path, image_filename, image_size, image_mime_type, storage_bucket)
+// que o leitor nunca usa — o payload cai sem perder nenhum campo renderizado.
+const DETAIL_COLUMNS = `
+  id,
+  slug,
+  title,
+  description,
+  content,
+  category,
+  categoria_id,
+  reading_time,
+  type,
+  featured,
+  status,
+  image_url,
+  video1,
+  video2,
+  author,
+  author_image,
+  tags,
+  product_ids,
+  created_at,
+  updated_at,
+  published_at
+`;
+
 export class BlogPostRepository {
-  // ✅ Buscar por UUID
+  // ✅ Buscar por UUID — projeção de detalhe (sem metadados de storage)
   async findById(id: string): Promise<BlogPost | null> {
     const { data, error } = await supabase
       .from('blog_posts')
-      .select('*')
+      .select(DETAIL_COLUMNS)
       .eq('id', id)
       .single();
 
@@ -45,7 +73,7 @@ export class BlogPostRepository {
   async findBySlug(slug: string): Promise<BlogPost | null> {
     const { data, error } = await supabase
       .from('blog_posts')
-      .select('*')
+      .select(DETAIL_COLUMNS)
       .eq('slug', slug)
       .single();
 

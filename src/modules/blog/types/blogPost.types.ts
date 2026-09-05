@@ -55,11 +55,14 @@ export interface BlogPostRow {
 
   // ✅ CAMPOS DE IMAGEM CORRETOS
   image_url: string | null;
-  image_path: string | null;
-  image_filename: string | null;
-  image_size: number | null;
-  image_mime_type: string | null;
-  storage_bucket: string | null;
+  // ⚠️ Metadados de storage são OPCIONAIS na linha: as projeções leves
+  // (LIST_COLUMNS / DETAIL_COLUMNS) não os selecionam — mapRowToPost
+  // preenche com fallbacks (?? null) para manter o contrato completo.
+  image_path?: string | null;
+  image_filename?: string | null;
+  image_size?: number | null;
+  image_mime_type?: string | null;
+  storage_bucket?: string | null;
 
   category: string | null;
   categoria_id: string | null;

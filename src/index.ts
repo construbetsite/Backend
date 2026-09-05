@@ -16,11 +16,22 @@ import landingCategoryRoutes from "./modules/landing/routes/landingCategory.rout
 import landingSliderRoutes from "./modules/landing/routes/landingSlider.routes";
 import landingUploadRoutes from "./modules/landing/routes/landingUpload.routes";
 import leadRoutes from "./modules/leads/routes/lead.routes";
+import { payloadScanner } from "./lib/payloadStats";
 
 const app = express();
 
 
 app.use(corsMiddleware);
+
+// ============================================================
+// Tarefa 1 — PAYLOAD SCANNER (diagnóstico)
+// → Intercepta TODAS as respostas e mede tamanho/tempo/aninhados
+// → Liga em dev por padrão; desligue com PAYLOAD_SCAN=0 em produção
+// → Relatório: reports/payload-report.json + console (log por env)
+// ============================================================
+if (process.env.PAYLOAD_SCAN !== '0') {
+  app.use(payloadScanner);
+}
 
 // ============================================================
 // COMPRESSÃO (Brotli primeiro, Gzip como fallback)

@@ -7,6 +7,16 @@ import {
   UpdateProductCategoryDTO,
 } from '../types/ProductCategory';
 
+// ✅ Tarefa 4 — projeção da LISTAGEM pública de categorias.
+// Exclui `description` (texto) da listagem; o detalhe usa DETAIL_COLUMNS.
+const LIST_COLUMNS =
+  'id, name, slug, image_url, parent_id, active, display_order';
+
+// ✅ Tarefa 4 — projeção do DETALHE (página da categoria no frontend).
+// Inclui description; exclui timestamps que o frontend não exibe.
+const DETAIL_COLUMNS =
+  'id, name, slug, description, image_url, parent_id, active, display_order';
+
 export class ProductCategoryRepository {
   private readonly table = 'product_categories';
 
@@ -36,7 +46,8 @@ export class ProductCategoryRepository {
   }): Promise<ProductCategory[]> {
     let query = supabase
       .from(this.table)
-      .select('*')
+      // ✅ Tarefa 4: LIST_COLUMNS (sem description) na listagem
+      .select(LIST_COLUMNS)
       .order('display_order', { ascending: true })
       .order('name', { ascending: true });
 
@@ -64,7 +75,8 @@ export class ProductCategoryRepository {
   async findById(id: string): Promise<ProductCategory | null> {
     const { data, error } = await supabase
       .from(this.table)
-      .select('*')
+      // ✅ Tarefa 4: DETAIL_COLUMNS (com description) no detalhe
+      .select(DETAIL_COLUMNS)
       .eq('id', id)
       .maybeSingle();
 
@@ -78,7 +90,8 @@ export class ProductCategoryRepository {
   async findBySlug(slug: string): Promise<ProductCategory | null> {
     const { data, error } = await supabase
       .from(this.table)
-      .select('*')
+      // ✅ Tarefa 4: DETAIL_COLUMNS (com description) no detalhe
+      .select(DETAIL_COLUMNS)
       .eq('slug', slug)
       .maybeSingle();
 

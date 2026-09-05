@@ -9,10 +9,14 @@ import {
   generateKey,
   invalidatePrefix,
   sendWithConditionalCache,
+  serveFromCache,
   CACHE_CONTROL_DYNAMIC,
   CACHE_CONTROL_DETAIL,
+  CACHE_CONTROL_VITRINE,
   TTL_PRODUCTS,
   TTL_PRODUCT_DETAIL,
+  TTL_VITRINE,
+  TTL_VITRINE_STALE,
 } from '../../../lib/cache';
 import {
   normalizePagination,
@@ -24,6 +28,71 @@ export class ProductController {
   constructor(
     private readonly service: ProductService
   ) {}
+
+  /** MAX_LIMIT global é 100; a vitrine nunca passa de 20 por garantia de contrato. */
+  static readonly VITRINE_MAX_LIMIT = 20;
+
+  /**
+   * Tarefa 2 — ROTA VITRINE (lista enxuta para a landing page).
+   *
+   * GET /api/product/vitrine?page=1&limit=20 | ?cursor=xxx
+   *
+   * O payload é montado uma vez, cacheado (com ETag pré-calculado e
+   * stale-while-revalidate no servidor) e enviado com 304 sempre que
+   * o cliente já tem a versão atual — o Frontend não re-baixa nada.
+   */
+  vitrine = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const pagination = normalizePagination(req.query);
+      const limit = Math.min(
+        pagination.limit,
+        ProductController.VITRINE_MAX_LIMIT
+      );
+      const page = pagination.page;
+      const offset = offsetFrom({ page, limit });
+
+      const cacheKey = generateKey('products:vitrine', {
+        page,
+        limit,
+      });
+
+      const payload = await serveFromCache(
+        cacheKey,
+        TTL_VITRINE,
+        TTL_VITRINE_STALE,
+        async () => {
+          const { items, total } =
+            await this.service.findVitrine(offset, limit);
+
+          // Apenas o corpo enxuto — quem cuida do cache + ETag
+          // pré-calculado é o próprio serveFromCache.
+          return {
+            success: true,
+            data: items,
+            pagination: buildPaginationMeta(
+              total,
+              offset,
+              limit
+            ),
+          };
+        }
+      );
+
+      sendWithConditionalCache(
+        req,
+        res,
+        payload,
+        CACHE_CONTROL_VITRINE
+      );
+    } catch (error: any) {
+      res.status(500).json({
+        message: error.message,
+      });
+    }
+  };
 
   findAll = async (
     req: Request,

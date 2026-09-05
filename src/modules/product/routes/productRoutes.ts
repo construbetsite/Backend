@@ -23,6 +23,12 @@ const controller = new ProductController(service);
 router.get('/', controller.findAll);
 
 
+// 🆕 Tarefa 2 — VITRINE (lista enxuta p/ landing page)
+// GET /api/products/vitrine?page=1&limit=20
+// ⚠️ Deve vir ANTES de "/:id", senão "vitrine" é tratado como id.
+router.get('/vitrine', controller.vitrine);
+
+
 // Produto por slug
 // GET /api/products/slug/:slug
 router.get('/slug/:slug', controller.findBySlug);

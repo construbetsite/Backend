@@ -8,11 +8,28 @@ import {
   CreateProductDTO,
   UpdateProductDTO,
 } from '../types/Product';
+import {
+  ProductVitrineItem,
+  mapToVitrine,
+} from '../dtos/ProductVitrineDTO';
 
 // ✅ Campos essenciais da LISTAGEM (card do frontend).
 // Exclui descrição longa, textos HTML, SEO, paths de storage.
 const LIST_COLUMNS =
   'id, category_id, name, slug, commercial_type, price, redirect_url, image_url, featured, display_order, active';
+
+// ✅ Tarefa 2 — projeção MÍNIMA da vitrine (Frontend lista apenas o card).
+// Sem description/short_description/meta_*/sku/brand/image_path — essas
+// colunas continuam existindo no banco, mas não viajam pela rede.
+const VITRINE_COLUMNS =
+  'id, name, slug, commercial_type, price, redirect_url, image_url, featured, display_order, active';
+
+// ✅ Tarefa 4 — projeção de DETALHE (página do produto no frontend).
+// Inclui campos úteis para a página (descrições, metas, brand), mas
+// EXCLUI campos internos de storage (image_path/image_filename) que o
+// público nunca usa — isso reduz em centenas de bytes por produto.
+const DETAIL_COLUMNS =
+  'id, category_id, name, slug, sku, brand, short_description, description, commercial_type, price, redirect_url, image_url, featured, display_order, active, meta_title, meta_description, created_at, updated_at';
 
 export class ProductRepository {
   private readonly table = 'products';
@@ -59,9 +76,10 @@ export class ProductRepository {
   }): Promise<Product[]> {
     let query = supabase
       .from(this.table)
-      // ✅ Mantém select('*') para compatibilidade com o contrato completo.
-      // O endpoint paginado (findAllPaginated) usa projeção leve.
-      .select('*')
+      // ✅ Tarefa 4: projeção leve em vez de select('*').
+      // O contrato do mapRow preenche os campos ausentes com fallbacks,
+      // então o payload enxuto continua compatível com o frontend.
+      .select(LIST_COLUMNS)
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
@@ -139,7 +157,8 @@ export class ProductRepository {
   async findById(id: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from(this.table)
-      .select('*')
+      // ✅ Tarefa 4: projeção de detalhe (sem storage internals)
+      .select(DETAIL_COLUMNS)
       .eq('id', id)
       .maybeSingle();
 
@@ -153,7 +172,8 @@ export class ProductRepository {
   async findBySlug(slug: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from(this.table)
-      .select('*')
+      // ✅ Tarefa 4: projeção de detalhe (sem storage internals)
+      .select(DETAIL_COLUMNS)
       .eq('slug', slug)
       .maybeSingle();
 
@@ -181,6 +201,36 @@ export class ProductRepository {
     }
 
     return (data ?? []).map((row: any) => this.mapListItem(row));
+  }
+
+  /**
+   * Tarefa 2 — listagem da VITRINE (landing page).
+   *
+   * ➜ Projeção direta no banco: só as colunas do card viajam na rede
+   *   (sem description, metas, paths, sku, brand).
+   * ➜ Sem JOINs: o card não precisa de nada além da própria linha.
+   * ➜ Paginação por página/cursor (offset) — nunca retorna mais que `limit`.
+   */
+  async findVitrine(
+    offset: number,
+    limit: number
+  ): Promise<{ items: ProductVitrineItem[]; total: number }> {
+    const { data, error, count } = await supabase
+      .from(this.table)
+      .select(VITRINE_COLUMNS, { count: 'exact' })
+      .eq('active', true)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      items: (data ?? []).map((row: any) => mapToVitrine(row)),
+      total: count || 0,
+    };
   }
 
   // Mapeia uma linha (com LIST_COLUMNS) para o formato leve do card
